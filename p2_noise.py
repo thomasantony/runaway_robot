@@ -33,6 +33,8 @@ import random
 
 from filters import extended_kalman_filter
 from utils import identity_matrix
+
+
 def setup_kalman_filter(z):
     """
     Setup Kalman Filter for this problem
@@ -86,6 +88,7 @@ def robot_F_fn(state, dt = 1.0):
     I = matrix([[]])
     I.identity(5)
     return I + J*dt
+
 
 def robot_x_fn(state, dt=1.0):
     """

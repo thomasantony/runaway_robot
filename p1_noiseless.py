@@ -60,12 +60,6 @@ from math import sin, cos, acos, atan2
 from matrix import *
 import random
 
-def angle_between(vec1, vec2):
-    """Computes angle between two vectors."""
-    mag_v1 = sqrt(sum(x**2 for x in vec1))
-    mag_v2 = sqrt(sum(x**2 for x in vec2))
-    dot = sum(x1*x2 for x1, x2 in zip(vec1, vec2))
-    return acos(dot/(mag_v1*mag_v2))
 
 def state_from_measurements(three_measurements):
     """
@@ -106,9 +100,6 @@ def estimate_next_pos(measurement, OTHER = None):
 
     if OTHER is None:
         # Store first measurement
-        P =  matrix([[1000., 0.,0.],
-                     [0., 1000.,0.],
-                     [0.,0.,1000.]])
         OTHER = [measurement]
         return ([measurement[0], measurement[1]], OTHER)
     elif len(OTHER) == 1:
