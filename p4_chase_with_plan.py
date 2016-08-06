@@ -290,4 +290,4 @@ target = robot(0.0, 10.0, 0.0, 2*pi / 30, 1.5)
 hunter = robot(-10.0, -10.0, 0.0)
 
 # print(demo_grading(hunter, target, naive_next_move))
-print(demo_grading(hunter, target, next_move))
+print(demo_grading2(hunter, target, next_move))

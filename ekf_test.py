@@ -266,26 +266,6 @@ for i in range(num):
     est[i,:] = np.array(est_xy)
     mavg[i,:] = [mavg_temp_x[i], mavg_temp_y[i]]
 
-# OTHER['P'].show()
-# for i, z in enumerate(circ_Z):
-#     if i>=30:
-#         est_xy, OTHER = estimate_next_pos(z, OTHER)
-#     else:
-#         est_xy = z
-#     est[i,:] = np.array(est_xy)
-# mavg[:,0] = np.convolve(circ_Z[:,0], weights, mode='same')
-# mavg[:,1] = np.convolve(circ_Z[:,1], weights, mode='same')
-
-# est_center = Z.mean(axis=0)
-# f_2 = partial(f_1, Z=Z)
-# center_2 = optimize.leastsq(f_2, est_center)
-# R_2 = calc_R(*center_2[0], Z).mean()
-#
-# for i, (x, y) in enumerate(Z):
-#     r_vec = np.array([x - center_2[0][0], y - center_2[0][1]])
-#     pt_on_circle = center_2[0] + r_vec/np.linalg.norm(r_vec) * R_2
-#     circ_Z[i,:] = pt_on_circle
-
 t = range(num)
 plt.plot(t, pos[:,0], t, est[:,0])#, t, circ_Z[:,0])
 plt.legend(['Position', 'Estimate'])#, 'Circular Regression'])
