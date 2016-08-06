@@ -29,8 +29,8 @@ def setup_kalman_filter():
 
     I = identity_matrix(5)
     # P = I*10000.0
-    P = matrix([[1000.0, 0.,    1000., 1000., 0.   ],
-                [0.,     1000., 1000., 1000., 0.   ],
+    P = matrix([[1000.0, 100.,  1000., 1000., 0.   ],
+                [100.,   1000., 1000., 1000., 0.   ],
                 [0.,     0.,    1000., 0.,    1000.],
                 [0.,     0.,    0.,    1000., 0.   ],
                 [0.,     0.,    0.,    0.,    1000.],
@@ -253,25 +253,26 @@ for i in range(num):
         med_circ_z = np.median(circ_fit[-5:,:],axis=0)
         # circ_Z[i,:] = circ_fit[-1]
         circ_Z[i,:] = med_circ_z
-
-        # est_xy, OTHER = estimate_next_pos(med_circ_z, OTHER)
+        if i >= 20:
+            est_xy, OTHER = estimate_next_pos(med_circ_z, OTHER)
+        else:
+            est_xy = med_circ_z
         # est_xy, OTHER = estimate_next_pos([mavg_temp_x[i], mavg_temp_y[i]], OTHER)
-        #
     else:
         circ_z = measurement
         est_xy = measurement
         circ_Z[i,:] = circ_z
-        # est_xy, OTHER = estimate_next_pos(measurement, OTHER)
 
-    # est[i,:] = np.array(est_xy)
+    est[i,:] = np.array(est_xy)
     mavg[i,:] = [mavg_temp_x[i], mavg_temp_y[i]]
 
-for i, z in enumerate(circ_Z):
-    if i>=30:
-        est_xy, OTHER = estimate_next_pos(z, OTHER)
-    else:
-        est_xy = z
-    est[i,:] = np.array(est_xy)
+# OTHER['P'].show()
+# for i, z in enumerate(circ_Z):
+#     if i>=30:
+#         est_xy, OTHER = estimate_next_pos(z, OTHER)
+#     else:
+#         est_xy = z
+#     est[i,:] = np.array(est_xy)
 # mavg[:,0] = np.convolve(circ_Z[:,0], weights, mode='same')
 # mavg[:,1] = np.convolve(circ_Z[:,1], weights, mode='same')
 
@@ -286,13 +287,13 @@ for i, z in enumerate(circ_Z):
 #     circ_Z[i,:] = pt_on_circle
 
 t = range(num)
-plt.plot(t, pos[:,0], t, est[:,0], t, circ_Z[:,0])
-plt.legend(['Position', 'Estimate', 'Circular Regression'])
+plt.plot(t, pos[:,0], t, est[:,0])#, t, circ_Z[:,0])
+plt.legend(['Position', 'Estimate'])#, 'Circular Regression'])
 plt.title('X-Position')
 
 plt.figure()
-plt.plot(t, pos[:,1], t, est[:,1], t, circ_Z[:,1])
-plt.legend(['Position', 'Estimate', 'Circular Regression'])
+plt.plot(t, pos[:,1], t, est[:,1])#, t, circ_Z[:,1])
+plt.legend(['Position', 'Estimate'])#, 'Circular Regression'])
 plt.title('Y-Position')
 
 plt.show(True)
