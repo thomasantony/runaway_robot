@@ -22,13 +22,13 @@ def setup_kalman_filter():
     H =  matrix([[1., 0., 0., 0., 0.],
                  [0., 1., 0., 0., 0.]])
      # measurement uncertainty: use 2x2 matrix with 0.1 as main diagonal
-    R = matrix([[0.5, 0.0],
-                [0.0, 0.5]])
+    R = matrix([[0.1, 0.0],
+                [0.0, 0.1]])
 
     u = matrix([[0.], [0.], [0.], [0.], [0.]]) # external motion
 
     I = identity_matrix(5)
-    P = I*1000.0
+    # P = I*10000.0
     P = matrix([[1000.0, 0.,    1000., 1000., 0.   ],
                 [0.,     1000., 1000., 1000., 0.   ],
                 [0.,     0.,    1000., 0.,    1000.],
@@ -37,8 +37,8 @@ def setup_kalman_filter():
     ])
 
     # I*1000.0  # 1000 along main diagonal
-    P.value[0][0] = 100.0
-    P.value[1][1] = 100.0
+    # P.value[0][0] = 100.0
+    # P.value[1][1] = 100.0
     # P.value[2][2] = 100.0
     # P.value[3][3] = 100.0
     # P.value[4][4] = 100.0
@@ -250,7 +250,7 @@ for i in range(num):
     # mavg_temp_y = ewma(Z[:i+1, 1], N)
     if i > 2:
         circ_fit = find_closest_circle_point(Z[:i+1])
-        med_circ_z = np.median(circ_fit[-4:,:],axis=0)
+        med_circ_z = np.median(circ_fit[-5:,:],axis=0)
         # circ_Z[i,:] = circ_fit[-1]
         circ_Z[i,:] = med_circ_z
 
@@ -267,7 +267,10 @@ for i in range(num):
     mavg[i,:] = [mavg_temp_x[i], mavg_temp_y[i]]
 
 for i, z in enumerate(circ_Z):
-    est_xy, OTHER = estimate_next_pos(z, OTHER)
+    if i>=30:
+        est_xy, OTHER = estimate_next_pos(z, OTHER)
+    else:
+        est_xy = z
     est[i,:] = np.array(est_xy)
 # mavg[:,0] = np.convolve(circ_Z[:,0], weights, mode='same')
 # mavg[:,1] = np.convolve(circ_Z[:,1], weights, mode='same')
@@ -283,12 +286,13 @@ for i, z in enumerate(circ_Z):
 #     circ_Z[i,:] = pt_on_circle
 
 t = range(num)
+plt.plot(t, pos[:,0], t, est[:,0], t, circ_Z[:,0])
+plt.legend(['Position', 'Estimate', 'Circular Regression'])
+plt.title('X-Position')
+
+plt.figure()
 plt.plot(t, pos[:,1], t, est[:,1], t, circ_Z[:,1])
 plt.legend(['Position', 'Estimate', 'Circular Regression'])
-# plt.figure()
-# plt.plot(t, pos[:,1], t, est[:,1], t, mavg[:,1])
-# plt.legend(['Position', 'Estimate', 'Moving Avg - '+str(N)])
-# plt.plot(t, Z[:,0], t, pos[:,0], t, est[:,0], t, mavg[:,0])
-# plt.legend(['Measurement', 'Position', 'Estimate', 'Moving Avg - '+str(N)])
-plt.title('X-Position')
+plt.title('Y-Position')
+
 plt.show(True)
