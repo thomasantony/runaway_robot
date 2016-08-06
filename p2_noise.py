@@ -33,9 +33,10 @@ import random
 
 from filters import extended_kalman_filter
 from utils import identity_matrix
+from functools import reduce
+from collections import deque
 
-
-def setup_kalman_filter(z):
+def setup_kalman_filter():
     """
     Setup Kalman Filter for this problem
 
@@ -49,16 +50,20 @@ def setup_kalman_filter(z):
     H =  matrix([[1., 0., 0., 0., 0.],
                  [0., 1., 0., 0., 0.]])
      # measurement uncertainty: use 2x2 matrix with 0.1 as main diagonal
-    R = matrix([[1., 0.0],
-                [0.0, 1.]])
+    R = matrix([[1.5, 0.0],
+                [0.0, 1.5]])
 
     u = matrix([[0.], [0.], [0.], [0.], [0.]]) # external motion
 
     I = identity_matrix(5)
     P =  I*1000.0  # 1000 along main diagonal
+    # P.value[0][0] = 100.0
+    # P.value[1][1] = 100.0
+    # P.value[2][2] = 100.0
+    # P.value[3][3] = 100.0
+    # P.value[4][4] = 100.0
 
-    x = matrix([[z[0]], [z[1]], [0.], [0.], [0.]])
-    return [ x, u, P, H, R]
+    return [ u, P, H, R]
 
 def robot_F_fn(state, dt = 1.0):
     """
@@ -143,6 +148,12 @@ def state_from_measurements(three_measurements):
 
     return matrix([[x3], [y3], [theta0], [v0], [w0]])
 
+import pandas as pd
+import numpy as np
+def ewma(values, period):
+    values = np.array(values)
+    return pd.ewma(values, span=period)[-1]
+
 # This is the function you have to write. Note that measurement is a
 # single (x, y) point. This function will have to be called multiple
 # times before you have enough information to accurately predict the
@@ -154,37 +165,59 @@ def estimate_next_pos(measurement, OTHER = None):
     based on noisy (x, y) measurements."""
     if OTHER is None:
         # Setup Kalman Filter
-        [ x, u, P, H, R] = setup_kalman_filter(measurement)
+        [u, P, H, R] = setup_kalman_filter()
         # OTHER = {'x': x, 'P': P, 'u': u, 'matrices':[H, R]}
         # est_xy = (x.value[0][0], x.value[1][0])
-        OTHER = {'z_list': [measurement], 'x': None,
-                 'P': P, 'u': u, 'matrices': [H, R], 'step': 1}
+        OTHER = {'z_list': deque([]), 'x': None,
+                 'P': P, 'u': u, 'matrices': [H, R], 'step': 1
+                #  'zx': [measurement[0]]
+                 }
+        OTHER['z_list'].append(np.array(measurement))
         return measurement, OTHER
     elif OTHER['step'] == 1:
         # Use first three measurements to seed the filter
         OTHER['step'] = 2
-        OTHER['z_list'].append(measurement)
+        OTHER['z_list'].append(np.array(measurement))
+        # OTHER['zx'].append(measurement[0])
+        # OTHER['x_list'].append(measurement)
         return measurement, OTHER
     elif OTHER['step'] == 2:
         OTHER['step'] = 3
-        OTHER['z_list'].append(measurement)
-
+        # Get last 3 measurements
+        OTHER['z_list'].append(np.array(measurement))
+        # OTHER['zx'].append(measurement[0])
         # Get initial estimate of state from the three measurements
         OTHER['x'] = state_from_measurements(OTHER['z_list'])
 
         # Initialization complete
         OTHER['step'] = -1
-        del OTHER['z_list']
+
+        # Use last 20 measurements only
+        num_z = 1000
+        # OTHER['x_list'] = deque(maxlen=num_z)
+        # OTHER['z_list'] = deque(maxlen=num_z+1)
 
         # Predict next position of robot using the dynamics and current state
         next_state = robot_x_fn(OTHER['x'])
+        # OTHER['x_list'].append(next_state)
         return (next_state.value[0][0], next_state.value[1][0]), OTHER
 
+    OTHER['z_list'].append(np.array(measurement))
+    # OTHER['zx'].append(measurement[0])
+    # z = ewma(OTHER['z_list'], len(OTHER['z_list']))
+    # print('measurement[0] : '+str(measurement[0])+', ewma(z[0]) : '+str(z))
+
+    # [u, P, H, R] = setup_kalman_filter()
+    # x = OTHER['x_list'][0]
+    # for z in OTHER['z_list']:
+    #     x, P = extended_kalman_filter(z, x, u, P,
+    #                                   robot_F_fn, robot_x_fn, H, R)
     x, P = extended_kalman_filter(measurement, OTHER['x'], OTHER['u'],
                         OTHER['P'], robot_F_fn, robot_x_fn, *OTHER['matrices'])
+    # OTHER['x_list'].append(x)
     OTHER['x'] = x
     OTHER['P'] = P
-
+    print('Trace of P : '+str(P.trace()))
     # Predict next position of robot
     next_state = robot_x_fn(x)
     est_xy = (next_state.value[0][0], next_state.value[1][0])
@@ -192,6 +225,7 @@ def estimate_next_pos(measurement, OTHER = None):
     # You must return xy_estimate (x, y), and OTHER (even if it is None)
     # in this order for grading purposes.
     # xy_estimate = (3.2, 9.1)
+    # return z, OTHER
     return est_xy, OTHER
 
 # A helper function you may find useful.
@@ -211,10 +245,14 @@ def demo_grading(estimate_next_pos_fcn, target_bot, OTHER = None):
     # if you haven't localized the target bot, make a guess about the next
     # position, then we move the bot and compare your guess to the true
     # next position. When you are close enough, we stop checking.
+
+    estimates = []
     while not localized and ctr <= 1000:
         ctr += 1
         measurement = target_bot.sense()
         position_guess, OTHER = estimate_next_pos_fcn(measurement, OTHER)
+        estimates.append(position_guess)
+
         target_bot.move_in_circle()
         true_position = (target_bot.x, target_bot.y)
         error = distance_between(position_guess, true_position)
@@ -224,6 +262,10 @@ def demo_grading(estimate_next_pos_fcn, target_bot, OTHER = None):
             localized = True
         if ctr == 1000:
             print("Sorry, it took you too many steps to localize the target.")
+    estimates = np.array(estimates)
+    std_x = np.std(estimates[:,0])
+    std_y = np.std(estimates[:,1])
+    print('2-sigma of estimates : '+str(std_x)+', '+str(std_y))
     return localized
 
 def demo_grading2(estimate_next_pos_fcn, target_bot, OTHER = None):
@@ -256,11 +298,13 @@ def demo_grading2(estimate_next_pos_fcn, target_bot, OTHER = None):
     prediction.penup()
     broken_robot.penup()
     measured_broken_robot.penup()
+
     #End of Visualization
     while not localized and ctr <= 1000:
         ctr += 1
         measurement = target_bot.sense()
         position_guess, OTHER = estimate_next_pos_fcn(measurement, OTHER)
+
         target_bot.move_in_circle()
         true_position = (target_bot.x, target_bot.y)
         error = distance_between(position_guess, true_position)
@@ -295,7 +339,8 @@ def naive_next_pos(measurement, OTHER = None):
 # This is how we create a target bot. Check the robot.py file to understand
 # How the robot class behaves.
 test_target = robot(2.1, 4.3, 0.5, 2*pi / 34.0, 1.5)
-measurement_noise = 0.05 * test_target.distance
+measurement_noise = .05 * test_target.distance
+print('Noise : '+str(measurement_noise))
 test_target.set_noise(0.0, 0.0, measurement_noise)
 
 # demo_grading(naive_next_pos, test_target)

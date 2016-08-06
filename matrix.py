@@ -98,6 +98,13 @@ class matrix:
         return res
 
 
+    def trace(self):
+        s = 0
+        for i in range(self.dimx):
+            s += self.value[i][i]
+        return s
+        
+
     def Cholesky(self, ztol= 1.0e-5):
         # Computes the upper triangular Cholesky factorization of
         # a positive definite matrix.
